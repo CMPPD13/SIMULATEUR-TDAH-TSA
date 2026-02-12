@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulateur TDAH & TSA</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+  background: #f4f6f9;
+  transition: background 0.5s;
+}
+
+.container {
+  max-width: 800px;
+  margin: auto;
+  padding: 40px 20px;
+}
+
+button {
+  padding: 12px 25px;
+  font-size: 16px;
+  margin: 10px;
+  cursor: pointer;
+}
+
+.hidden {
+  display: none;
+}
+
+.popup {
+  position: fixed;
+  background: white;
+  border: 1px solid black;
+  padding: 10px;
+  z-index: 999;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div id="home">
+    <h1>🧠 Expérience immersive</h1>
+    <p>Choisissez une simulation :</p>
+    <button onclick="startTDAH()">Simulation TDAH</button>
+    <button onclick="startTSA()">Simulation TSA</button>
+  </div>
+
+  <div id="tdah" class="hidden">
+    <h2>Simulation de concentration</h2>
+    <p id="text">
+      Le cerveau humain traite des milliers d'informations chaque seconde.
+      La concentration permet de filtrer les éléments inutiles pour se
+      focaliser sur une tâche précise.
+    </p>
+    <p id="timer"></p>
+  </div>
+
+  <div id="tsa" class="hidden">
+    <h2>Situation sociale</h2>
+    <p>Vous devez commander un café.</p>
+    <button onclick="stress()">Commander rapidement</button>
+    <p id="tsaMessage"></p>
+  </div>
+
+  <div id="end" class="hidden">
+    <h2>Fin de l'expérience</h2>
+    <p>
+      Cette simulation illustre certaines difficultés possibles liées au
+      TDAH et au TSA.
+    </p>
+    <p><strong>Chaque personne est unique.</strong></p>
+  </div>
+
+</div>
+
+<script>
+
+let timeLeft = 30;
+let interval;
+
+function startTDAH() {
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("tdah").classList.remove("hidden");
+
+  interval = setInterval(() => {
+    timeLeft--;
+    document.getElementById("timer").innerText =
+      "Temps restant : " + timeLeft + " secondes";
+
+    if (timeLeft <= 0) {
+      clearInterval(interval);
+      finish();
+    }
+  }, 1000);
+
+  setTimeout(() => popup("🔔 Nouveau message !"), 4000);
+  setTimeout(() => popup("💭 Pense à autre chose..."), 7000);
+  setTimeout(() => shake(), 10000);
+  setTimeout(() => changeColor(), 15000);
+}
+
+function popup(text) {
+  let div = document.createElement("div");
+  div.className = "popup";
+  div.innerText = text;
+  div.style.top = Math.random()*70 + "%";
+  div.style.left = Math.random()*70 + "%";
+  document.body.appendChild(div);
+
+  setTimeout(() => div.remove(), 3000);
+}
+
+function shake() {
+  let text = document.getElementById("text");
+  let move = setInterval(() => {
+    text.style.marginLeft = (Math.random()*10 - 5) + "px";
+  }, 100);
+
+  setTimeout(() => {
+    clearInterval(move);
+    text.style.marginLeft = "0px";
+  }, 3000);
+}
+
+function changeColor() {
+  document.body.style.background = "#ffd6d6";
+}
+
+function startTSA() {
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("tsa").classList.remove("hidden");
+}
+
+function stress() {
+  document.getElementById("tsaMessage").innerText =
+    "Le serveur parle vite, il y a du bruit, les lumières sont fortes...";
+  document.body.style.background = "#ffe9b3";
+
+  setTimeout(() => {
+    finish();
+  }, 5000);
+}
+
+function finish() {
+  document.getElementById("tdah").classList.add("hidden");
+  document.getElementById("tsa").classList.add("hidden");
+  document.getElementById("end").classList.remove("hidden");
+}
+
+</script>
+
+</body>
+</html>
