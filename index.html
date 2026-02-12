@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Simulateur immersif TDAH & TSA</title>
-
+<title>Jeu Immersif TDAH/TSA</title>
 <style>
 body {
   font-family: Arial, sans-serif;
@@ -14,187 +13,153 @@ body {
   background: #f4f6f9;
   transition: background 0.5s;
 }
-
 .container {
-  max-width: 800px;
+  max-width: 900px;
   margin: auto;
-  padding: 40px 20px;
+  padding: 30px 20px;
 }
-
 button {
   padding: 12px 25px;
   font-size: 16px;
   margin: 10px;
   cursor: pointer;
 }
-
 .hidden { display: none; }
 
-.popup {
-  position: fixed;
-  background: rgba(255,255,255,0.95);
-  border-radius: 8px;
-  border: 1px solid #000;
-  padding: 10px 15px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.3);
-  z-index: 999;
-  font-weight: bold;
+#gameArea {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  border: 2px solid #ccc;
+  margin-top: 20px;
+  overflow: hidden;
+  background-image: url('https://i.imgur.com/xmWzYz1.png'); /* image de fond placeholder */
+  background-size: cover;
 }
 
-#text { transition: transform 0.1s, margin 0.1s; }
+.distraction {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  background: url('https://i.imgur.com/K2zq5K0.png') no-repeat center/contain; /* icône distraction */
+}
+
+#score {
+  font-weight: bold;
+  font-size: 20px;
+  margin-top: 10px;
+}
+
+.popup {
+  position: absolute;
+  background: rgba(255,255,255,0.9);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #000;
+  font-weight: bold;
+}
 </style>
 </head>
-
 <body>
 
 <div class="container">
 
-  <!-- Home -->
   <div id="home">
-    <h1>🧠 Parcours immersif</h1>
-    <p>Choisissez une expérience :</p>
-    <button onclick="startTDAH()">Simulation TDAH</button>
-    <button onclick="startTSA()">Simulation TSA</button>
+    <h1>🧠 Jeu immersif TDAH & TSA</h1>
+    <p>Choisis ton parcours :</p>
+    <button onclick="startGame('TDAH')">Parcours TDAH</button>
+    <button onclick="startGame('TSA')">Parcours TSA</button>
   </div>
 
-  <!-- TDAH -->
-  <div id="tdah" class="hidden">
-    <h2>Simulation de concentration</h2>
-    <p id="text">
-      Le cerveau humain traite des milliers d'informations chaque seconde.
-      La concentration permet de filtrer les éléments inutiles pour se
-      focaliser sur une tâche précise.
-    </p>
-    <p id="timer"></p>
+  <div id="game" class="hidden">
+    <h2 id="levelTitle"></h2>
+    <p id="instructions"></p>
+    <div id="gameArea"></div>
+    <p id="score">Score : 0</p>
   </div>
 
-  <!-- TSA -->
-  <div id="tsa" class="hidden">
-    <h2>Situation sociale</h2>
-    <p>Vous devez commander un café dans un environnement bruyant.</p>
-    <button onclick="stress()">Commander</button>
-    <p id="tsaMessage"></p>
-  </div>
-
-  <!-- End -->
   <div id="end" class="hidden">
-    <h2>Fin de l'expérience</h2>
-    <p>
-      Cette simulation illustre certaines difficultés possibles liées au
-      TDAH et au TSA.
-    </p>
-    <p><strong>Chaque personne est unique.</strong></p>
+    <h2>🎉 Fin du jeu</h2>
+    <p id="finalMessage"></p>
+    <p id="finalScore"></p>
+    <button onclick="restart()">Rejouer</button>
   </div>
 
 </div>
 
-<!-- Sons -->
 <audio id="bgMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
 <audio id="notifSound" src="https://www.soundjay.com/button/sounds/button-16.mp3"></audio>
 
 <script>
-let timeLeft = 30;
+let score = 0;
 let interval;
+let level;
+let distractions = [];
 
-// ------------------- TDAH -------------------
-function startTDAH() {
+// Démarrer le jeu
+function startGame(chosenLevel) {
+  level = chosenLevel;
   document.getElementById("home").classList.add("hidden");
-  document.getElementById("tdah").classList.remove("hidden");
+  document.getElementById("game").classList.remove("hidden");
+  document.getElementById("levelTitle").innerText = "Parcours : " + level;
+  document.getElementById("instructions").innerText = 
+    level === 'TDAH' ? 
+    "Clique sur les distractions pour rester concentré !" : 
+    "Clique sur les bonnes actions sociales !";
 
-  // Jouer la musique de fond
-  document.getElementById("bgMusic").volume = 0.15;
-  document.getElementById("bgMusic").play();
-
-  // Timer
-  interval = setInterval(() => {
-    timeLeft--;
-    document.getElementById("timer").innerText = "Temps restant : " + timeLeft + " secondes";
-    if(timeLeft <= 0) {
-      clearInterval(interval);
-      finish();
-    }
-  }, 1000);
-
-  // Effets immersifs
-  setTimeout(() => popup("🔔 Nouveau message !"), 4000);
-  setTimeout(() => popup("💭 Pensée intrusive..."), 7000);
-  setTimeout(() => shakeText(), 12000);
-  setTimeout(() => flashScreen(), 16000);
-  setTimeout(() => randomMoveText(), 20000);
-}
-
-// Popup notifications
-function popup(message) {
-  let div = document.createElement("div");
-  div.className = "popup";
-  div.innerText = message;
-  div.style.top = Math.random() * 70 + "%";
-  div.style.left = Math.random() * 70 + "%";
-  document.body.appendChild(div);
-
-  // Jouer le son
-  let sound = document.getElementById("notifSound");
-  sound.currentTime = 0;
-  sound.play();
-
-  setTimeout(() => div.remove(), 3000);
-}
-
-// Shake du texte
-function shakeText() {
-  let text = document.getElementById("text");
-  let count = 0;
-  let move = setInterval(() => {
-    text.style.marginLeft = (Math.random()*10 - 5) + "px";
-    text.style.marginTop = (Math.random()*5 - 2.5) + "px";
-    count++;
-    if(count > 20) { clearInterval(move); text.style.margin = "0"; }
-  }, 100);
-}
-
-// Flash écran
-function flashScreen() {
-  document.body.style.transition = "0.1s";
-  document.body.style.background = "#ffcccc";
-  setTimeout(() => { document.body.style.background = "#f4f6f9"; }, 200);
-}
-
-// Texte qui bouge
-function randomMoveText() {
-  let text = document.getElementById("text");
-  let count = 0;
-  let move = setInterval(() => {
-    text.style.transform = `translate(${Math.random()*20-10}px, ${Math.random()*10-5}px)`;
-    count++;
-    if(count > 30) { clearInterval(move); text.style.transform = "translate(0,0)"; }
-  }, 100);
-}
-
-// ------------------- TSA -------------------
-function startTSA() {
-  document.getElementById("home").classList.add("hidden");
-  document.getElementById("tsa").classList.remove("hidden");
-
-  // Musique de fond
   document.getElementById("bgMusic").volume = 0.1;
   document.getElementById("bgMusic").play();
 
-  // Effets visuels
-  document.body.style.background = "#fff5cc";
-  setTimeout(() => popup("💬 Le serveur parle vite !"), 2000);
-  setTimeout(() => popup("🔊 Bruits de fond forts"), 4000);
-  setTimeout(() => finish(), 8000);
+  startLevel();
 }
 
-// ------------------- Fin -------------------
-function finish() {
-  document.getElementById("tdah").classList.add("hidden");
-  document.getElementById("tsa").classList.add("hidden");
-  document.getElementById("end").classList.remove("hidden");
+// Création des distractions aléatoires
+function startLevel() {
+  let gameArea = document.getElementById("gameArea");
+  interval = setInterval(() => {
+    let div = document.createElement("div");
+    div.className = "distraction";
+    div.style.top = Math.random() * (gameArea.clientHeight - 50) + "px";
+    div.style.left = Math.random() * (gameArea.clientWidth - 50) + "px";
+    div.onclick = () => { score++; updateScore(); div.remove(); playNotif(); };
+    gameArea.appendChild(div);
+    distractions.push(div);
 
-  // Stop musique
-  document.getElementById("bgMusic").pause();
-  document.getElementById("bgMusic").currentTime = 0;
+    // Fin du niveau après 40 secondes
+    setTimeout(() => finishLevel(), 40000);
+  }, 2000);
+}
+
+// Mettre à jour le score
+function updateScore() {
+  document.getElementById("score").innerText = "Score : " + score;
+}
+
+// Jouer le son de notification
+function playNotif() {
+  let sound = document.getElementById("notifSound");
+  sound.currentTime = 0;
+  sound.play();
+}
+
+// Fin du niveau
+function finishLevel() {
+  clearInterval(interval);
+  distractions.forEach(d => d.remove());
+  document.getElementById("game").classList.add("hidden");
+  document.getElementById("end").classList.remove("hidden");
+  document.getElementById("finalScore").innerText = "Score final : " + score;
+  document.getElementById("finalMessage").innerText = 
+    level === 'TDAH' ? "Tu as expérimenté les distractions fréquentes !" :
+    "Tu as expérimenté les difficultés sociales !";
+}
+
+// Rejouer
+function restart() {
+  score = 0;
+  distractions = [];
+  document.getElementById("end").classList.add("hidden");
+  document.getElementById("home").classList.remove("hidden");
 }
 </script>
 
