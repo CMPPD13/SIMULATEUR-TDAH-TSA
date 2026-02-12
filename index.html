@@ -3,27 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jeu Immersif TDAH/TSA</title>
+<title>Mission Quotidienne - Jeu TDAH/TSA</title>
 <style>
 body {
-  font-family: Arial, sans-serif;
-  text-align: center;
+  font-family: Comic Sans MS, Arial, sans-serif;
   margin: 0;
   padding: 0;
-  background: #f4f6f9;
-  transition: background 0.5s;
+  text-align: center;
+  background: #f0f8ff;
 }
+
 .container {
-  max-width: 900px;
+  max-width: 1000px;
   margin: auto;
-  padding: 30px 20px;
+  padding: 20px;
 }
+
 button {
-  padding: 12px 25px;
+  padding: 10px 20px;
   font-size: 16px;
   margin: 10px;
   cursor: pointer;
 }
+
 .hidden { display: none; }
 
 #gameArea {
@@ -33,20 +35,36 @@ button {
   border: 2px solid #ccc;
   margin-top: 20px;
   overflow: hidden;
-  background-image: url('https://i.imgur.com/xmWzYz1.png'); /* image de fond placeholder */
-  background-size: cover;
+  background: linear-gradient(to right, #a2d5f2, #fceabb); /* ciel et sol */
+}
+
+.character {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  background: url('https://i.imgur.com/TbOqz3M.png') no-repeat center/contain;
+  bottom: 10px;
+  left: 0;
+  transition: left 0.3s;
+}
+
+.collectible {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  background: url('https://i.imgur.com/Fq9O3QE.png') no-repeat center/contain;
 }
 
 .distraction {
   position: absolute;
   width: 50px;
   height: 50px;
-  background: url('https://i.imgur.com/K2zq5K0.png') no-repeat center/contain; /* icône distraction */
+  background: url('https://i.imgur.com/K2zq5K0.png') no-repeat center/contain;
 }
 
 #score {
-  font-weight: bold;
   font-size: 20px;
+  font-weight: bold;
   margin-top: 10px;
 }
 
@@ -63,9 +81,8 @@ button {
 <body>
 
 <div class="container">
-
   <div id="home">
-    <h1>🧠 Jeu immersif TDAH & TSA</h1>
+    <h1>🎯 Mission Quotidienne</h1>
     <p>Choisis ton parcours :</p>
     <button onclick="startGame('TDAH')">Parcours TDAH</button>
     <button onclick="startGame('TSA')">Parcours TSA</button>
@@ -74,17 +91,18 @@ button {
   <div id="game" class="hidden">
     <h2 id="levelTitle"></h2>
     <p id="instructions"></p>
-    <div id="gameArea"></div>
+    <div id="gameArea">
+      <div class="character" id="character"></div>
+    </div>
     <p id="score">Score : 0</p>
   </div>
 
   <div id="end" class="hidden">
-    <h2>🎉 Fin du jeu</h2>
+    <h2>🎉 Mission terminée !</h2>
     <p id="finalMessage"></p>
     <p id="finalScore"></p>
     <button onclick="restart()">Rejouer</button>
   </div>
-
 </div>
 
 <audio id="bgMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
@@ -92,9 +110,11 @@ button {
 
 <script>
 let score = 0;
-let interval;
 let level;
 let distractions = [];
+let collectibles = [];
+let character = document.getElementById("character");
+let gameInterval;
 
 // Démarrer le jeu
 function startGame(chosenLevel) {
@@ -104,8 +124,8 @@ function startGame(chosenLevel) {
   document.getElementById("levelTitle").innerText = "Parcours : " + level;
   document.getElementById("instructions").innerText = 
     level === 'TDAH' ? 
-    "Clique sur les distractions pour rester concentré !" : 
-    "Clique sur les bonnes actions sociales !";
+    "Collecte les objets tout en évitant les distractions !" : 
+    "Réagis aux situations sociales en cliquant sur les bonnes actions !";
 
   document.getElementById("bgMusic").volume = 0.1;
   document.getElementById("bgMusic").play();
@@ -113,29 +133,46 @@ function startGame(chosenLevel) {
   startLevel();
 }
 
-// Création des distractions aléatoires
+// Création aléatoire d'objets à collecter et distractions
 function startLevel() {
   let gameArea = document.getElementById("gameArea");
-  interval = setInterval(() => {
-    let div = document.createElement("div");
-    div.className = "distraction";
-    div.style.top = Math.random() * (gameArea.clientHeight - 50) + "px";
-    div.style.left = Math.random() * (gameArea.clientWidth - 50) + "px";
-    div.onclick = () => { score++; updateScore(); div.remove(); playNotif(); };
-    gameArea.appendChild(div);
-    distractions.push(div);
+  let steps = 0;
 
-    // Fin du niveau après 40 secondes
-    setTimeout(() => finishLevel(), 40000);
-  }, 2000);
+  gameInterval = setInterval(() => {
+    steps++;
+    // Déplacer le personnage
+    let left = Math.min(steps*5, gameArea.clientWidth - 60);
+    character.style.left = left + "px";
+
+    // Créer un objet collectible
+    let collect = document.createElement("div");
+    collect.className = "collectible";
+    collect.style.top = Math.random() * (gameArea.clientHeight - 50) + "px";
+    collect.style.left = Math.random() * (gameArea.clientWidth - 50) + "px";
+    collect.onclick = () => { score++; updateScore(); collect.remove(); playNotif(); };
+    gameArea.appendChild(collect);
+    collectibles.push(collect);
+
+    // Créer une distraction
+    let distract = document.createElement("div");
+    distract.className = "distraction";
+    distract.style.top = Math.random() * (gameArea.clientHeight - 50) + "px";
+    distract.style.left = Math.random() * (gameArea.clientWidth - 50) + "px";
+    distract.onclick = () => { score = Math.max(0, score-1); updateScore(); distract.remove(); playNotif(); };
+    gameArea.appendChild(distract);
+    distractions.push(distract);
+
+    // Fin du niveau après 80 étapes
+    if(steps > 80) finishLevel();
+  }, 500);
 }
 
-// Mettre à jour le score
+// Mise à jour du score
 function updateScore() {
   document.getElementById("score").innerText = "Score : " + score;
 }
 
-// Jouer le son de notification
+// Jouer son notification
 function playNotif() {
   let sound = document.getElementById("notifSound");
   sound.currentTime = 0;
@@ -144,20 +181,23 @@ function playNotif() {
 
 // Fin du niveau
 function finishLevel() {
-  clearInterval(interval);
+  clearInterval(gameInterval);
   distractions.forEach(d => d.remove());
+  collectibles.forEach(c => c.remove());
   document.getElementById("game").classList.add("hidden");
   document.getElementById("end").classList.remove("hidden");
   document.getElementById("finalScore").innerText = "Score final : " + score;
   document.getElementById("finalMessage").innerText = 
-    level === 'TDAH' ? "Tu as expérimenté les distractions fréquentes !" :
-    "Tu as expérimenté les difficultés sociales !";
+    level === 'TDAH' ? "Tu as expérimenté la gestion des distractions !" :
+    "Tu as expérimenté les situations sociales !";
 }
 
 // Rejouer
 function restart() {
   score = 0;
   distractions = [];
+  collectibles = [];
+  character.style.left = "0px";
   document.getElementById("end").classList.add("hidden");
   document.getElementById("home").classList.remove("hidden");
 }
