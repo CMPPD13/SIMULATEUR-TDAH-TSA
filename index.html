@@ -3,208 +3,175 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mission Quotidienne Avancée - Jeu pour enfants</title>
+<title>Application Cognitive Adaptative</title>
+
 <style>
-body {
-  font-family: Comic Sans MS, Arial, sans-serif;
-  margin: 0; padding: 0;
-  text-align: center;
-  background: #f0f8ff;
-}
-.container { max-width: 1000px; margin: auto; padding: 20px; }
-button { padding: 10px 20px; font-size: 16px; margin: 10px; cursor: pointer; }
-.hidden { display: none; }
-
-#gameArea {
-  position: relative;
-  width: 100%;
-  height: 450px;
-  border: 2px solid #ccc;
-  margin-top: 20px;
-  overflow: hidden;
-  background: linear-gradient(to right, #a2d5f2, #fceabb);
+body{
+  margin:0;
+  font-family:Arial;
+  overflow:hidden;
+  text-align:center;
+  background:#f2f2f2;
 }
 
-.character {
-  position: absolute;
-  width: 60px; height: 60px;
-  background: url('https://i.imgur.com/2R1T5XK.png') no-repeat center/contain;
-  bottom: 10px; left: 0;
-  transition: left 0.3s;
+#menu{
+  padding:40px;
 }
 
-.collectible, .distraction {
-  position: absolute;
-  width: 50px; height: 50px;
-  transition: transform 0.2s;
-}
-.collectible { background: url('https://i.imgur.com/pK6WmXx.png') no-repeat center/contain; }
-.collectible:hover { transform: scale(1.2); }
-.distraction { background: url('https://i.imgur.com/RY3y1l6.png') no-repeat center/contain; animation: float 1.5s infinite alternate; }
-
-@keyframes float {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(-10px); }
+button{
+  padding:12px 18px;
+  margin:8px;
+  font-size:16px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
 }
 
-#score { font-size: 20px; font-weight: bold; margin-top: 10px; }
-
-.popup {
-  position: absolute;
-  background: rgba(255,255,255,0.9);
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #000;
-  font-weight: bold;
-  animation: popupAnim 0.5s ease-in-out;
+#gameArea{
+  display:none;
+  width:100%;
+  height:100vh;
+  position:relative;
 }
-@keyframes popupAnim {
-  0% { transform: scale(0); opacity: 0; }
-  50% { transform: scale(1.2); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+
+#mission{
+  background:white;
+  padding:10px;
+  font-weight:bold;
+}
+
+.object{
+  position:absolute;
+  font-size:42px;
+  cursor:pointer;
+}
+
+.distraction{
+  animation:shake 0.3s infinite;
+}
+
+.flash{
+  animation:flash 0.5s infinite alternate;
+}
+
+@keyframes shake{
+  0%{transform:translateX(-3px);}
+  50%{transform:translateX(3px);}
+  100%{transform:translateX(-3px);}
+}
+
+@keyframes flash{
+  from{opacity:0.4;}
+  to{opacity:1;}
+}
+
+@keyframes bounce{
+  from{transform:translateY(0);}
+  to{transform:translateY(-12px);}
+}
+
+.tdah .object{
+  animation:bounce 1s infinite alternate;
+}
+
+.calm .distraction,
+.calm .flash{
+  animation:none !important;
 }
 </style>
 </head>
+
 <body>
 
-<div class="container">
-  <div id="home">
-    <h1>🎯 Mission Quotidienne Avancée</h1>
-    <p>Choisis ton parcours :</p>
-    <button onclick="startGame('TDAH')">Parcours TDAH</button>
-    <button onclick="startGame('TSA')">Parcours TSA</button>
-  </div>
-
-  <div id="game" class="hidden">
-    <h2 id="levelTitle"></h2>
-    <p id="instructions"></p>
-    <div id="gameArea">
-      <div class="character" id="character"></div>
-    </div>
-    <p id="score">Score : 0</p>
-  </div>
-
-  <div id="end" class="hidden">
-    <h2>🎉 Mission terminée !</h2>
-    <p id="finalMessage"></p>
-    <p id="finalScore"></p>
-    <button onclick="restart()">Rejouer</button>
-  </div>
+<div id="menu">
+  <h1>Application Cognitive</h1>
+  <button onclick="startGame('tdah')">🧠 Mode TDAH</button>
+  <button onclick="startGame('tsa')">🌈 Mode TSA</button>
 </div>
 
-<audio id="bgMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
-<audio id="notifSound" src="https://www.soundjay.com/button/sounds/button-16.mp3"></audio>
+<div id="gameArea">
+  <div id="mission"></div>
+  <button onclick="toggleCalm()">🌿 Mode Calme</button>
+  <button onclick="toggleSound()">🔊 Son ON/OFF</button>
+</div>
 
 <script>
-let score = 0;
-let level;
-let steps = 0;
-let gameInterval;
-let collectibles = [];
-let distractions = [];
-let missions = [
-  {name:"Maison", instructions:"Collecte tous les jouets !"},
-  {name:"École", instructions:"Ramasse tes crayons et livres !"},
-  {name:"Parc", instructions:"Attrape les fruits et objets ludiques !"}
-];
+let mode="";
+let needed=[];
+let found=[];
+let soundOn=true;
 
-let currentMission = 0;
-let character = document.getElementById("character");
+let successSound=new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+successSound.volume=0.3;
 
-function startGame(chosenLevel) {
-  level = chosenLevel;
-  document.getElementById("home").classList.add("hidden");
-  document.getElementById("game").classList.remove("hidden");
-  score = 0;
-  currentMission = 0;
-  steps = 0;
-  startMission();
-  document.getElementById("bgMusic").volume = 0.1;
-  document.getElementById("bgMusic").play().catch(()=>{alert("Clique pour démarrer le son");});
-}
+function startGame(selectedMode){
+  mode=selectedMode;
+  document.getElementById("menu").style.display="none";
+  document.getElementById("gameArea").style.display="block";
+  document.body.className=mode;
 
-function startMission() {
-  if(currentMission >= missions.length) {
-    finishGame();
-    return;
+  if(mode==="tdah"){
+    needed=["⭐","🎒","📚","🎨","🍎"];
+    document.getElementById("mission").innerText="🎯 Clique sur 5 objets amusants";
   }
-  document.getElementById("levelTitle").innerText = "Mission : " + missions[currentMission].name;
-  document.getElementById("instructions").innerText = missions[currentMission].instructions;
-  startLevel();
+
+  if(mode==="tsa"){
+    needed=["🍎","🍞","🥛"];
+    document.getElementById("mission").innerText="🛒 Trouve 🍎 🍞 🥛";
+  }
+
+  generateObjects();
 }
 
-function startLevel() {
-  let gameArea = document.getElementById("gameArea");
-  gameInterval = setInterval(() => {
-    steps++;
-    let left = Math.min(steps*5, gameArea.clientWidth - 60);
-    character.style.left = left + "px";
+function generateObjects(){
+  let allItems=["🍎","🍞","🥛","🍪","🍫","🧃","🧀","🍩","⭐","🎒","📚","🎨"];
 
-    // Objets à collecter
-    let collect = document.createElement("div");
-    collect.className = "collectible";
-    collect.style.top = Math.random()*(gameArea.clientHeight-50)+"px";
-    collect.style.left = Math.random()*(gameArea.clientWidth-50)+"px";
-    collect.onclick = () => { score++; updateScore(); collect.remove(); playNotif(); };
-    gameArea.appendChild(collect);
-    collectibles.push(collect);
+  for(let i=0;i<25;i++){
+    let el=document.createElement("div");
+    let randomItem=allItems[Math.floor(Math.random()*allItems.length)];
 
-    // Distractions
-    let distract = document.createElement("div");
-    distract.className = "distraction";
-    distract.style.top = Math.random()*(gameArea.clientHeight-50)+"px";
-    distract.style.left = Math.random()*(gameArea.clientWidth-50)+"px";
-    distract.onclick = () => { score = Math.max(0,score-1); updateScore(); distract.remove(); playNotif(); };
-    gameArea.appendChild(distract);
-    distractions.push(distract);
+    el.innerText=randomItem;
+    el.className="object";
 
-    if(steps % 50 === 0) showPopup("Mission étape : "+missions[currentMission].name);
+    if(mode==="tsa" && !needed.includes(randomItem)){
+      el.classList.add("distraction","flash");
+    }
 
-    if(steps > 100) finishMission();
-  }, 500);
+    el.style.top=Math.random()*85+"%";
+    el.style.left=Math.random()*90+"%";
+
+    el.onclick=function(){
+      if(needed.includes(randomItem)){
+        if(!found.includes(randomItem)){
+          found.push(randomItem);
+          el.remove();
+
+          if(soundOn){
+            successSound.currentTime=0;
+            successSound.play();
+          }
+
+          if(found.length===needed.length){
+            setTimeout(()=>{
+              alert("🎉 Mission réussie !");
+              location.reload();
+            },300);
+          }
+        }
+      }
+    };
+
+    document.getElementById("gameArea").appendChild(el);
+  }
 }
 
-function showPopup(message) {
-  let div = document.createElement("div");
-  div.className = "popup";
-  div.innerText = message;
-  div.style.top = "20px"; div.style.left="50%"; div.style.transform="translateX(-50%)";
-  document.getElementById("gameArea").appendChild(div);
-  setTimeout(()=>div.remove(),2000);
+function toggleCalm(){
+  document.body.classList.toggle("calm");
 }
 
-function finishMission() {
-  clearInterval(gameInterval);
-  collectibles.forEach(c=>c.remove()); distractions.forEach(d=>d.remove());
-  steps=0; collectibles=[]; distractions=[];
-  currentMission++;
-  startMission();
-}
-
-function updateScore() {
-  document.getElementById("score").innerText = "Score : "+score;
-}
-
-function playNotif() {
-  let sound = document.getElementById("notifSound");
-  sound.currentTime=0;
-  sound.play();
-}
-
-function finishGame() {
-  document.getElementById("game").classList.add("hidden");
-  document.getElementById("end").classList.remove("hidden");
-  document.getElementById("finalScore").innerText = "Score final : "+score;
-  document.getElementById("finalMessage").innerText = "Bravo ! Tu as terminé toutes les missions !";
-}
-
-function restart() {
-  document.getElementById("end").classList.add("hidden");
-  document.getElementById("home").classList.remove("hidden");
-  character.style.left="0px";
-  score=0;
-  steps=0;
-  currentMission=0;
+function toggleSound(){
+  soundOn=!soundOn;
+  alert(soundOn ? "🔊 Son activé" : "🔇 Son désactivé");
 }
 </script>
 
