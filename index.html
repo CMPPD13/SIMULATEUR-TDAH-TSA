@@ -3,70 +3,51 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mission Quotidienne - Jeu TDAH/TSA</title>
+<title>Mission Quotidienne Avancée - Jeu pour enfants</title>
 <style>
 body {
   font-family: Comic Sans MS, Arial, sans-serif;
-  margin: 0;
-  padding: 0;
+  margin: 0; padding: 0;
   text-align: center;
   background: #f0f8ff;
 }
-
-.container {
-  max-width: 1000px;
-  margin: auto;
-  padding: 20px;
-}
-
-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  margin: 10px;
-  cursor: pointer;
-}
-
+.container { max-width: 1000px; margin: auto; padding: 20px; }
+button { padding: 10px 20px; font-size: 16px; margin: 10px; cursor: pointer; }
 .hidden { display: none; }
 
 #gameArea {
   position: relative;
   width: 100%;
-  height: 400px;
+  height: 450px;
   border: 2px solid #ccc;
   margin-top: 20px;
   overflow: hidden;
-  background: linear-gradient(to right, #a2d5f2, #fceabb); /* ciel et sol */
+  background: linear-gradient(to right, #a2d5f2, #fceabb);
 }
 
 .character {
   position: absolute;
-  width: 60px;
-  height: 60px;
-  background: url('https://i.imgur.com/TbOqz3M.png') no-repeat center/contain;
-  bottom: 10px;
-  left: 0;
+  width: 60px; height: 60px;
+  background: url('https://i.imgur.com/2R1T5XK.png') no-repeat center/contain;
+  bottom: 10px; left: 0;
   transition: left 0.3s;
 }
 
-.collectible {
+.collectible, .distraction {
   position: absolute;
-  width: 50px;
-  height: 50px;
-  background: url('https://i.imgur.com/Fq9O3QE.png') no-repeat center/contain;
+  width: 50px; height: 50px;
+  transition: transform 0.2s;
+}
+.collectible { background: url('https://i.imgur.com/pK6WmXx.png') no-repeat center/contain; }
+.collectible:hover { transform: scale(1.2); }
+.distraction { background: url('https://i.imgur.com/RY3y1l6.png') no-repeat center/contain; animation: float 1.5s infinite alternate; }
+
+@keyframes float {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-10px); }
 }
 
-.distraction {
-  position: absolute;
-  width: 50px;
-  height: 50px;
-  background: url('https://i.imgur.com/K2zq5K0.png') no-repeat center/contain;
-}
-
-#score {
-  font-size: 20px;
-  font-weight: bold;
-  margin-top: 10px;
-}
+#score { font-size: 20px; font-weight: bold; margin-top: 10px; }
 
 .popup {
   position: absolute;
@@ -75,6 +56,12 @@ button {
   border-radius: 8px;
   border: 1px solid #000;
   font-weight: bold;
+  animation: popupAnim 0.5s ease-in-out;
+}
+@keyframes popupAnim {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 </style>
 </head>
@@ -82,7 +69,7 @@ button {
 
 <div class="container">
   <div id="home">
-    <h1>🎯 Mission Quotidienne</h1>
+    <h1>🎯 Mission Quotidienne Avancée</h1>
     <p>Choisis ton parcours :</p>
     <button onclick="startGame('TDAH')">Parcours TDAH</button>
     <button onclick="startGame('TSA')">Parcours TSA</button>
@@ -111,95 +98,113 @@ button {
 <script>
 let score = 0;
 let level;
-let distractions = [];
-let collectibles = [];
-let character = document.getElementById("character");
+let steps = 0;
 let gameInterval;
+let collectibles = [];
+let distractions = [];
+let missions = [
+  {name:"Maison", instructions:"Collecte tous les jouets !"},
+  {name:"École", instructions:"Ramasse tes crayons et livres !"},
+  {name:"Parc", instructions:"Attrape les fruits et objets ludiques !"}
+];
 
-// Démarrer le jeu
+let currentMission = 0;
+let character = document.getElementById("character");
+
 function startGame(chosenLevel) {
   level = chosenLevel;
   document.getElementById("home").classList.add("hidden");
   document.getElementById("game").classList.remove("hidden");
-  document.getElementById("levelTitle").innerText = "Parcours : " + level;
-  document.getElementById("instructions").innerText = 
-    level === 'TDAH' ? 
-    "Collecte les objets tout en évitant les distractions !" : 
-    "Réagis aux situations sociales en cliquant sur les bonnes actions !";
-
+  score = 0;
+  currentMission = 0;
+  steps = 0;
+  startMission();
   document.getElementById("bgMusic").volume = 0.1;
-  document.getElementById("bgMusic").play();
+  document.getElementById("bgMusic").play().catch(()=>{alert("Clique pour démarrer le son");});
+}
 
+function startMission() {
+  if(currentMission >= missions.length) {
+    finishGame();
+    return;
+  }
+  document.getElementById("levelTitle").innerText = "Mission : " + missions[currentMission].name;
+  document.getElementById("instructions").innerText = missions[currentMission].instructions;
   startLevel();
 }
 
-// Création aléatoire d'objets à collecter et distractions
 function startLevel() {
   let gameArea = document.getElementById("gameArea");
-  let steps = 0;
-
   gameInterval = setInterval(() => {
     steps++;
-    // Déplacer le personnage
     let left = Math.min(steps*5, gameArea.clientWidth - 60);
     character.style.left = left + "px";
 
-    // Créer un objet collectible
+    // Objets à collecter
     let collect = document.createElement("div");
     collect.className = "collectible";
-    collect.style.top = Math.random() * (gameArea.clientHeight - 50) + "px";
-    collect.style.left = Math.random() * (gameArea.clientWidth - 50) + "px";
+    collect.style.top = Math.random()*(gameArea.clientHeight-50)+"px";
+    collect.style.left = Math.random()*(gameArea.clientWidth-50)+"px";
     collect.onclick = () => { score++; updateScore(); collect.remove(); playNotif(); };
     gameArea.appendChild(collect);
     collectibles.push(collect);
 
-    // Créer une distraction
+    // Distractions
     let distract = document.createElement("div");
     distract.className = "distraction";
-    distract.style.top = Math.random() * (gameArea.clientHeight - 50) + "px";
-    distract.style.left = Math.random() * (gameArea.clientWidth - 50) + "px";
-    distract.onclick = () => { score = Math.max(0, score-1); updateScore(); distract.remove(); playNotif(); };
+    distract.style.top = Math.random()*(gameArea.clientHeight-50)+"px";
+    distract.style.left = Math.random()*(gameArea.clientWidth-50)+"px";
+    distract.onclick = () => { score = Math.max(0,score-1); updateScore(); distract.remove(); playNotif(); };
     gameArea.appendChild(distract);
     distractions.push(distract);
 
-    // Fin du niveau après 80 étapes
-    if(steps > 80) finishLevel();
+    if(steps % 50 === 0) showPopup("Mission étape : "+missions[currentMission].name);
+
+    if(steps > 100) finishMission();
   }, 500);
 }
 
-// Mise à jour du score
-function updateScore() {
-  document.getElementById("score").innerText = "Score : " + score;
+function showPopup(message) {
+  let div = document.createElement("div");
+  div.className = "popup";
+  div.innerText = message;
+  div.style.top = "20px"; div.style.left="50%"; div.style.transform="translateX(-50%)";
+  document.getElementById("gameArea").appendChild(div);
+  setTimeout(()=>div.remove(),2000);
 }
 
-// Jouer son notification
+function finishMission() {
+  clearInterval(gameInterval);
+  collectibles.forEach(c=>c.remove()); distractions.forEach(d=>d.remove());
+  steps=0; collectibles=[]; distractions=[];
+  currentMission++;
+  startMission();
+}
+
+function updateScore() {
+  document.getElementById("score").innerText = "Score : "+score;
+}
+
 function playNotif() {
   let sound = document.getElementById("notifSound");
-  sound.currentTime = 0;
+  sound.currentTime=0;
   sound.play();
 }
 
-// Fin du niveau
-function finishLevel() {
-  clearInterval(gameInterval);
-  distractions.forEach(d => d.remove());
-  collectibles.forEach(c => c.remove());
+function finishGame() {
   document.getElementById("game").classList.add("hidden");
   document.getElementById("end").classList.remove("hidden");
-  document.getElementById("finalScore").innerText = "Score final : " + score;
-  document.getElementById("finalMessage").innerText = 
-    level === 'TDAH' ? "Tu as expérimenté la gestion des distractions !" :
-    "Tu as expérimenté les situations sociales !";
+  document.getElementById("finalScore").innerText = "Score final : "+score;
+  document.getElementById("finalMessage").innerText = "Bravo ! Tu as terminé toutes les missions !";
 }
 
-// Rejouer
 function restart() {
-  score = 0;
-  distractions = [];
-  collectibles = [];
-  character.style.left = "0px";
   document.getElementById("end").classList.add("hidden");
   document.getElementById("home").classList.remove("hidden");
+  character.style.left="0px";
+  score=0;
+  steps=0;
+  currentMission=0;
 }
 </script>
 
