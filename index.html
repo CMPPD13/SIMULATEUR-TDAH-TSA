@@ -1,158 +1,37 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Through My Eyes - Simulation 3D Immersive</title>
-<style>
-body, html {margin:0; padding:0; overflow:hidden; font-family:Arial; background:#f0f0f0;}
-#menu {display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; text-align:center;}
-button {padding:15px 25px; font-size:18px; margin:15px; border:none; border-radius:10px; cursor:pointer; background:#4CAF50; color:white;}
-#experience {display:none; width:100%; height:100vh; position:relative;}
-#mission {position:absolute; top:10px; width:100%; text-align:center; font-size:22px; font-weight:bold; background:white; padding:10px; z-index:10;}
-#calmBtn, #exitBtn {position:absolute; top:50px; right:20px; padding:10px 15px; border:none; border-radius:5px; cursor:pointer; z-index:10; background:#2196F3; color:white;}
-#surchargeBar {position:absolute; top:90px; left:5%; width:90%; height:15px; background:#ddd; border-radius:8px; z-index:10;}
-#surchargeLevel {height:100%; width:0%; background:red; border-radius:8px; transition:0.3s;}
-#world {width:100%; height:100%;}
-</style>
+    <meta charset="UTF-8">
+    <title>Simulateur Santé Mentale</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #world { width: 100vw; height: 100vh; display: block; }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+        }
+        button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
+    <div id="world"></div>
+    <div id="ui">
+        <button id="startTdah">Lancer TDAH Classe</button>
+    </div>
 
-<div id="menu">
-  <h1>Vivez l'expérience Through My Eyes</h1>
-  <p>Choisissez un thème pour découvrir la santé mentale</p>
-  <button onclick="startExperience('tdah')">🧠 Mode TDAH Classe 3D</button>
-  <button onclick="startExperience('tsa_restaurant')">🌈 Mode TSA Restaurant 3D</button>
-</div>
+    <!-- Three.js et ses dépendances -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
 
-<div id="experience">
-  <div id="mission"></div>
-  <button id="calmBtn" onclick="toggleCalm()">🌿 Mode Calme</button>
-  <button id="exitBtn" onclick="exitExperience()">🏠 Quitter</button>
-  <div id="surchargeBar"><div id="surchargeLevel"></div></div>
-  <div id="world"></div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.159.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.159.0/examples/js/loaders/GLTFLoader.js"></script>
-
-<script>
-let mode="", level=0, surcharge=document.getElementById("surchargeLevel"), calm=false;
-let world=document.getElementById("world"), surchargeInterval, animateId, activeSounds=[];
-let scene, camera, renderer, controls;
-let interactiveObjects=[], clients=[], tables=[];
-
-// Sons immersifs
-let tdahSounds=["https://www.soundjay.com/button/sounds/button-16.mp3","https://www.soundjay.com/button/sounds/button-3.mp3"];
-let tsaSounds=["https://www.soundjay.com/misc/sounds/restaurant-ambience-1.mp3"];
-
-// Jouer sons
-function playSounds(list){
-  stopAllSounds();
-  activeSounds=list.map(src=>{
-    let a=new Audio(src); a.loop=true; a.volume=0.1; a.play(); return a;
-  });
-}
-function stopAllSounds(){activeSounds.forEach(a=>a.pause()); activeSounds=[];}
-
-// Initialisation scène 3D
-function initScene3D(){
-  world.innerHTML="";
-  scene=new THREE.Scene();
-  scene.background=new THREE.Color(0xe0f7fa);
-
-  camera=new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight,0.1,1000);
-  camera.position.set(0,1.6,5);
-
-  renderer=new THREE.WebGLRenderer({antialias:true});
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  world.appendChild(renderer.domElement);
-
-  controls=new THREE.OrbitControls(camera,renderer.domElement);
-  controls.enablePan=false; controls.enableZoom=false;
-
-  const light=new THREE.AmbientLight(0xffffff,1); scene.add(light);
-  const dirLight=new THREE.DirectionalLight(0xffffff,0.5); dirLight.position.set(0,10,5); scene.add(dirLight);
-}
-
-// Charger modèle GLB depuis URL
-function loadGLB(url, position, scale, callback){
-  const loader=new THREE.GLTFLoader();
-  loader.load(url,function(gltf){
-    let model=gltf.scene;
-    model.position.copy(position);
-    model.scale.set(scale,scale,scale);
-    scene.add(model);
-    if(callback) callback(model);
-  });
-}
-
-// Classe 3D TDAH (classe)
-function initClass(){
-  initScene3D(); interactiveObjects=[];
-  let positions=[[-2,0,-2],[0,0,-2],[2,0,-2],[-2,0,0],[0,0,0],[2,0,0],[-2,0,2],[0,0,2],[2,0,2]];
-  positions.forEach((p,i)=>{
-    loadGLB("https://rawcdn.githack.com/KhronosGroup/glTF-Sample-Models/master/2.0/Cube/glTF/Cube.gltf", new THREE.Vector3(p[0],0.25,p[2]), 0.5, function(obj){
-      interactiveObjects.push({object:obj, action:()=>alert("🎯 Objet trouvé !")});
-    });
-  });
-}
-
-// Restaurant 3D TSA
-function initRestaurant(){
-  initScene3D(); interactiveObjects=[]; tables=[]; clients=[];
-  let positions=[[-2,0,-2],[0,0,-2],[2,0,-2],[-2,0,0],[0,0,0],[2,0,0],[-2,0,2],[0,0,2],[2,0,2]];
-  positions.forEach((p,i)=>{
-    // Table
-    loadGLB("https://rawcdn.githack.com/KhronosGroup/glTF-Sample-Models/master/2.0/Cube/glTF/Cube.gltf", new THREE.Vector3(p[0],0.1,p[2]), 0.5, function(obj){
-      tables.push(obj);
-      interactiveObjects.push({object:obj, action:()=>alert("🎉 Table sélectionnée !")});
-    });
-    // Client
-    loadGLB("https://rawcdn.githack.com/KhronosGroup/glTF-Sample-Models/master/2.0/Cube/glTF/Cube.gltf", new THREE.Vector3(p[0],0.25,p[2]), 0.3, function(obj){ clients.push(obj); });
-  });
-}
-
-// Animation immersive
-function animate(){
-  if(!calm) camera.position.x=Math.sin(level/20)*0.5;
-  clients.forEach(c=>c.rotation.y+=0.01*(1+level/50));
-  renderer.render(scene,camera);
-  animateId=requestAnimationFrame(animate);
-}
-
-// Démarrer expérience
-function startExperience(selectedMode){
-  mode=selectedMode;
-  document.getElementById("menu").style.display="none";
-  document.getElementById("experience").style.display="block";
-  level=0; calm=false; updateSurcharge();
-
-  if(mode==="tdah"){
-    document.getElementById("mission").innerText="🎯 Mission : Suis la consigne malgré les distractions.";
-    playSounds(tdahSounds); initClass();
-  } else if(mode==="tsa_restaurant"){
-    document.getElementById("mission").innerText="🍽️ Mission : Trouve ta table et commande malgré la surcharge.";
-    playSounds(tsaSounds); initRestaurant();
-  }
-  animate();
-  startSurcharge();
-}
-
-// Surcharge progressive
-function startSurcharge(){
-  surchargeInterval=setInterval(()=>{
-    if(level<100) level+=1; updateSurcharge();
-  },500);
-}
-function updateSurcharge(){surcharge.style.width=level+"%";}
-
-// Mode calme
-function toggleCalm(){calm=!calm; level=level/2; updateSurcharge(); activeSounds.forEach(s=>s.volume=calm?0.05:0.1);}
-
-// Quitter
-function exitExperience(){clearInterval(surchargeInterval); cancelAnimationFrame(animateId); stopAllSounds(); world.innerHTML=""; document.getElementById("experience").style.display="none"; document.getElementById("menu").style.display="flex"; level=0; updateSurcharge();}
-</script>
+    <!-- Ton script JS -->
+    <script src="script.js"></script>
 </body>
 </html>
