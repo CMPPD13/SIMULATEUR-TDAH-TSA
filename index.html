@@ -3,151 +3,208 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mission Concentration</title>
-
+<title>Mission Quotidienne Avancée - Jeu pour enfants</title>
 <style>
-body{
-  margin:0;
-  font-family:Arial, sans-serif;
-  text-align:center;
-  background:linear-gradient(#87CEEB,#FFE4B5);
+body {
+  font-family: Comic Sans MS, Arial, sans-serif;
+  margin: 0; padding: 0;
+  text-align: center;
+  background: #f0f8ff;
+}
+.container { max-width: 1000px; margin: auto; padding: 20px; }
+button { padding: 10px 20px; font-size: 16px; margin: 10px; cursor: pointer; }
+.hidden { display: none; }
+
+#gameArea {
+  position: relative;
+  width: 100%;
+  height: 450px;
+  border: 2px solid #ccc;
+  margin-top: 20px;
+  overflow: hidden;
+  background: linear-gradient(to right, #a2d5f2, #fceabb);
 }
 
-#gameArea{
-  position:relative;
-  width:100%;
-  height:400px;
-  overflow:hidden;
-  border:4px solid #333;
-  background:#fff3b0;
+.character {
+  position: absolute;
+  width: 60px; height: 60px;
+  background: url('https://i.imgur.com/2R1T5XK.png') no-repeat center/contain;
+  bottom: 10px; left: 0;
+  transition: left 0.3s;
 }
 
-.character{
-  position:absolute;
-  bottom:20px;
-  left:0;
-  width:60px;
-  height:60px;
-  background:orange;
-  border-radius:50%;
-  transition:left 0.3s;
+.collectible, .distraction {
+  position: absolute;
+  width: 50px; height: 50px;
+  transition: transform 0.2s;
+}
+.collectible { background: url('https://i.imgur.com/pK6WmXx.png') no-repeat center/contain; }
+.collectible:hover { transform: scale(1.2); }
+.distraction { background: url('https://i.imgur.com/RY3y1l6.png') no-repeat center/contain; animation: float 1.5s infinite alternate; }
+
+@keyframes float {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-10px); }
 }
 
-.eye{
-  width:10px;
-  height:10px;
-  background:black;
-  border-radius:50%;
-  position:absolute;
-  top:20px;
+#score { font-size: 20px; font-weight: bold; margin-top: 10px; }
+
+.popup {
+  position: absolute;
+  background: rgba(255,255,255,0.9);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #000;
+  font-weight: bold;
+  animation: popupAnim 0.5s ease-in-out;
 }
-
-.eye.left{left:15px;}
-.eye.right{right:15px;}
-
-.collectible{
-  position:absolute;
-  width:40px;
-  height:40px;
-  background:green;
-  border-radius:10px;
-  cursor:pointer;
-  animation:bounce 1s infinite alternate;
-}
-
-.distraction{
-  position:absolute;
-  width:40px;
-  height:40px;
-  background:red;
-  border-radius:50%;
-  cursor:pointer;
-  animation:shake 0.4s infinite;
-}
-
-@keyframes bounce{
-  from{transform:translateY(0);}
-  to{transform:translateY(-15px);}
-}
-
-@keyframes shake{
-  0%{transform:translateX(-4px);}
-  50%{transform:translateX(4px);}
-  100%{transform:translateX(-4px);}
-}
-
-button{
-  padding:12px 20px;
-  margin:10px;
-  font-size:16px;
-  border:none;
-  border-radius:8px;
-  background:#4CAF50;
-  color:white;
-  cursor:pointer;
+@keyframes popupAnim {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 </style>
 </head>
 <body>
 
-<h1>🎯 Mission Super Concentration</h1>
-<button onclick="startGame()">Démarrer la mission</button>
-<p id="score">Score : 0</p>
+<div class="container">
+  <div id="home">
+    <h1>🎯 Mission Quotidienne Avancée</h1>
+    <p>Choisis ton parcours :</p>
+    <button onclick="startGame('TDAH')">Parcours TDAH</button>
+    <button onclick="startGame('TSA')">Parcours TSA</button>
+  </div>
 
-<div id="gameArea" class="hidden">
-  <div class="character" id="character">
-    <div class="eye left"></div>
-    <div class="eye right"></div>
+  <div id="game" class="hidden">
+    <h2 id="levelTitle"></h2>
+    <p id="instructions"></p>
+    <div id="gameArea">
+      <div class="character" id="character"></div>
+    </div>
+    <p id="score">Score : 0</p>
+  </div>
+
+  <div id="end" class="hidden">
+    <h2>🎉 Mission terminée !</h2>
+    <p id="finalMessage"></p>
+    <p id="finalScore"></p>
+    <button onclick="restart()">Rejouer</button>
   </div>
 </div>
 
+<audio id="bgMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
+<audio id="notifSound" src="https://www.soundjay.com/button/sounds/button-16.mp3"></audio>
+
 <script>
-let score=0;
-let steps=0;
-let interval;
-let character=document.getElementById("character");
+let score = 0;
+let level;
+let steps = 0;
+let gameInterval;
+let collectibles = [];
+let distractions = [];
+let missions = [
+  {name:"Maison", instructions:"Collecte tous les jouets !"},
+  {name:"École", instructions:"Ramasse tes crayons et livres !"},
+  {name:"Parc", instructions:"Attrape les fruits et objets ludiques !"}
+];
 
-function startGame(){
-  document.getElementById("gameArea").classList.remove("hidden");
-  interval=setInterval(runGame,500);
+let currentMission = 0;
+let character = document.getElementById("character");
+
+function startGame(chosenLevel) {
+  level = chosenLevel;
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+  score = 0;
+  currentMission = 0;
+  steps = 0;
+  startMission();
+  document.getElementById("bgMusic").volume = 0.1;
+  document.getElementById("bgMusic").play().catch(()=>{alert("Clique pour démarrer le son");});
 }
 
-function runGame(){
-  steps++;
-  character.style.left=(steps*5)+"px";
-
-  let area=document.getElementById("gameArea");
-
-  let good=document.createElement("div");
-  good.className="collectible";
-  good.style.top=Math.random()*350+"px";
-  good.style.left=Math.random()*800+"px";
-  good.onclick=function(){
-    score++;
-    updateScore();
-    good.remove();
-  };
-  area.appendChild(good);
-
-  let bad=document.createElement("div");
-  bad.className="distraction";
-  bad.style.top=Math.random()*350+"px";
-  bad.style.left=Math.random()*800+"px";
-  bad.onclick=function(){
-    score=Math.max(0,score-1);
-    updateScore();
-    bad.remove();
-  };
-  area.appendChild(bad);
-
-  if(steps>100){
-    clearInterval(interval);
-    alert("Mission terminée ! Score final : "+score);
+function startMission() {
+  if(currentMission >= missions.length) {
+    finishGame();
+    return;
   }
+  document.getElementById("levelTitle").innerText = "Mission : " + missions[currentMission].name;
+  document.getElementById("instructions").innerText = missions[currentMission].instructions;
+  startLevel();
 }
 
-function updateScore(){
-  document.getElementById("score").innerText="Score : "+score;
+function startLevel() {
+  let gameArea = document.getElementById("gameArea");
+  gameInterval = setInterval(() => {
+    steps++;
+    let left = Math.min(steps*5, gameArea.clientWidth - 60);
+    character.style.left = left + "px";
+
+    // Objets à collecter
+    let collect = document.createElement("div");
+    collect.className = "collectible";
+    collect.style.top = Math.random()*(gameArea.clientHeight-50)+"px";
+    collect.style.left = Math.random()*(gameArea.clientWidth-50)+"px";
+    collect.onclick = () => { score++; updateScore(); collect.remove(); playNotif(); };
+    gameArea.appendChild(collect);
+    collectibles.push(collect);
+
+    // Distractions
+    let distract = document.createElement("div");
+    distract.className = "distraction";
+    distract.style.top = Math.random()*(gameArea.clientHeight-50)+"px";
+    distract.style.left = Math.random()*(gameArea.clientWidth-50)+"px";
+    distract.onclick = () => { score = Math.max(0,score-1); updateScore(); distract.remove(); playNotif(); };
+    gameArea.appendChild(distract);
+    distractions.push(distract);
+
+    if(steps % 50 === 0) showPopup("Mission étape : "+missions[currentMission].name);
+
+    if(steps > 100) finishMission();
+  }, 500);
+}
+
+function showPopup(message) {
+  let div = document.createElement("div");
+  div.className = "popup";
+  div.innerText = message;
+  div.style.top = "20px"; div.style.left="50%"; div.style.transform="translateX(-50%)";
+  document.getElementById("gameArea").appendChild(div);
+  setTimeout(()=>div.remove(),2000);
+}
+
+function finishMission() {
+  clearInterval(gameInterval);
+  collectibles.forEach(c=>c.remove()); distractions.forEach(d=>d.remove());
+  steps=0; collectibles=[]; distractions=[];
+  currentMission++;
+  startMission();
+}
+
+function updateScore() {
+  document.getElementById("score").innerText = "Score : "+score;
+}
+
+function playNotif() {
+  let sound = document.getElementById("notifSound");
+  sound.currentTime=0;
+  sound.play();
+}
+
+function finishGame() {
+  document.getElementById("game").classList.add("hidden");
+  document.getElementById("end").classList.remove("hidden");
+  document.getElementById("finalScore").innerText = "Score final : "+score;
+  document.getElementById("finalMessage").innerText = "Bravo ! Tu as terminé toutes les missions !";
+}
+
+function restart() {
+  document.getElementById("end").classList.add("hidden");
+  document.getElementById("home").classList.remove("hidden");
+  character.style.left="0px";
+  score=0;
+  steps=0;
+  currentMission=0;
 }
 </script>
 
