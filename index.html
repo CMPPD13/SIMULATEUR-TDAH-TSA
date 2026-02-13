@@ -1,19 +1,155 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-<title>TEST</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Concentration</title>
+
 <style>
 body{
-  background:red;
-  color:white;
-  font-size:40px;
+  margin:0;
+  font-family:Arial, sans-serif;
   text-align:center;
+  background:linear-gradient(#87CEEB,#FFE4B5);
+}
+
+#gameArea{
+  position:relative;
+  width:100%;
+  height:400px;
+  overflow:hidden;
+  border:4px solid #333;
+  background:#fff3b0;
+}
+
+.character{
+  position:absolute;
+  bottom:20px;
+  left:0;
+  width:60px;
+  height:60px;
+  background:orange;
+  border-radius:50%;
+  transition:left 0.3s;
+}
+
+.eye{
+  width:10px;
+  height:10px;
+  background:black;
+  border-radius:50%;
+  position:absolute;
+  top:20px;
+}
+
+.eye.left{left:15px;}
+.eye.right{right:15px;}
+
+.collectible{
+  position:absolute;
+  width:40px;
+  height:40px;
+  background:green;
+  border-radius:10px;
+  cursor:pointer;
+  animation:bounce 1s infinite alternate;
+}
+
+.distraction{
+  position:absolute;
+  width:40px;
+  height:40px;
+  background:red;
+  border-radius:50%;
+  cursor:pointer;
+  animation:shake 0.4s infinite;
+}
+
+@keyframes bounce{
+  from{transform:translateY(0);}
+  to{transform:translateY(-15px);}
+}
+
+@keyframes shake{
+  0%{transform:translateX(-4px);}
+  50%{transform:translateX(4px);}
+  100%{transform:translateX(-4px);}
+}
+
+button{
+  padding:12px 20px;
+  margin:10px;
+  font-size:16px;
+  border:none;
+  border-radius:8px;
+  background:#4CAF50;
+  color:white;
+  cursor:pointer;
 }
 </style>
 </head>
 <body>
 
-ÇA DOIT ÊTRE ROUGE
+<h1>🎯 Mission Super Concentration</h1>
+<button onclick="startGame()">Démarrer la mission</button>
+<p id="score">Score : 0</p>
+
+<div id="gameArea" class="hidden">
+  <div class="character" id="character">
+    <div class="eye left"></div>
+    <div class="eye right"></div>
+  </div>
+</div>
+
+<script>
+let score=0;
+let steps=0;
+let interval;
+let character=document.getElementById("character");
+
+function startGame(){
+  document.getElementById("gameArea").classList.remove("hidden");
+  interval=setInterval(runGame,500);
+}
+
+function runGame(){
+  steps++;
+  character.style.left=(steps*5)+"px";
+
+  let area=document.getElementById("gameArea");
+
+  let good=document.createElement("div");
+  good.className="collectible";
+  good.style.top=Math.random()*350+"px";
+  good.style.left=Math.random()*800+"px";
+  good.onclick=function(){
+    score++;
+    updateScore();
+    good.remove();
+  };
+  area.appendChild(good);
+
+  let bad=document.createElement("div");
+  bad.className="distraction";
+  bad.style.top=Math.random()*350+"px";
+  bad.style.left=Math.random()*800+"px";
+  bad.onclick=function(){
+    score=Math.max(0,score-1);
+    updateScore();
+    bad.remove();
+  };
+  area.appendChild(bad);
+
+  if(steps>100){
+    clearInterval(interval);
+    alert("Mission terminée ! Score final : "+score);
+  }
+}
+
+function updateScore(){
+  document.getElementById("score").innerText="Score : "+score;
+}
+</script>
 
 </body>
 </html>
